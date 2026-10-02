@@ -4,8 +4,6 @@ coverage/
 *.log
 
 .git-upstream/
-.agents/
-.gstack/
 
 backend/.env
 backend/dist/
@@ -18,11 +16,3 @@ frontend/dist/
 frontend/dist-ssr/
 frontend/.env.backup
 *.backup
-
-# Local project instructions and internal working documents.
-AGENTS.md
-CLAUDE.md
-docs/project-history.md
-docs/architecture.md
-docs/tz-compliance-report.md
-frontend/docs/backend-postponed-tickets.md
