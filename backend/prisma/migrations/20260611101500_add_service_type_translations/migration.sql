@@ -1,0 +1,2 @@
+ALTER TABLE "service_types" ADD COLUMN IF NOT EXISTS "nameKk" TEXT;
+ALTER TABLE "service_types" ADD COLUMN IF NOT EXISTS "nameEn" TEXT;

@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.git
+.agents
+.gstack
+*.log
+backend/.env
+frontend/.env
+backend/uploads
+frontend/dist-ssr
+*.backup

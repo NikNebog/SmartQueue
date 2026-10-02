@@ -1,0 +1,28 @@
+{
+  "name": "proq",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "install:all": "npm.cmd install",
+    "backend:generate": "npm.cmd --workspace smartq-backend exec prisma generate",
+    "backend:migrate": "npm.cmd --workspace smartq-backend exec prisma migrate deploy",
+    "backend:seed": "npm.cmd --workspace smartq-backend run seed",
+    "setup": "npm.cmd run install:all && npm.cmd run db:up && npm.cmd run backend:generate && npm.cmd run backend:migrate && npm.cmd run backend:seed",
+    "backend:dev": "npm.cmd --workspace smartq-backend run start:dev",
+    "frontend:dev": "npm.cmd --workspace frontend run dev -- --host 0.0.0.0",
+    "docker:up": "docker compose up --build",
+    "docker:up:detached": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "dev": "powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1",
+    "build": "npm.cmd run build:backend && npm.cmd run build:frontend",
+    "build:backend": "npm.cmd --workspace smartq-backend run build",
+    "build:frontend": "npm.cmd --workspace frontend run build",
+    "audit:all": "npm.cmd --workspace smartq-backend audit && npm.cmd --workspace frontend audit"
+  }
+}

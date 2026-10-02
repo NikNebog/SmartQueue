@@ -1,0 +1,5 @@
+export { DashboardKpis } from './DashboardKpis'
+export { QueueOverviewWidget } from './QueueOverviewWidget'
+export { RecommendationsWidget } from './RecommendationsWidget'
+export { RecentCallsWidget } from './RecentCallsWidget'
+export { RoomLoadWidget } from './RoomLoadWidget'

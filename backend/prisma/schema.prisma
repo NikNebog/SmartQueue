@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ENUMS
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+
+enum Role {
+  admin
+  specialist
+  manager
+}
+
+enum TicketStatus {
+  created
+  waiting
+  called
+  in_service
+  completed
+  cancelled
+  no_show
+  postponed
+  redirected
+}
+
+enum EventType {
+  ticket_created
+  patient_arrived
+  ticket_called
+  service_started
+  service_completed
+  ticket_cancelled
+  ticket_postponed
+  patient_redirected
+  queue_overloaded
+}
+
+enum RecommendationSeverity {
+  info
+  warning
+  critical
+}
+
+enum PlaceType {
+  CABINET
+  WINDOW
+  TABLE
+}
+
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// MODELS
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(specialist)
+  roomId    Int?
+  canManageTicketIssue Boolean @default(true)
+  room      Room?    @relation(fields: [roomId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model ServiceType {
+  id                      Int      @id @default(autoincrement())
+  name                    String   @unique
+  ticketPrefix            String   @unique
+  nameKk                  String?
+  nameEn                  String?
+  averageDurationMinutes  Int
+  priorityWeight          Int      @default(1)
+  active                  Boolean  @default(true)
+
+  tickets  Ticket[]
+  rooms    RoomServiceType[]
+
+  @@map("service_types")
+}
+
+model Room {
+  id                 Int       @id @default(autoincrement())
+  name               String    @unique
+  isActive           Boolean   @default(true)
+  ticketIssueEnabled Boolean   @default(true)
+  placeType          PlaceType @default(CABINET)
+  estimatedWaitMinutes Int?
+  workingStartTime   String?   // С„РѕСЂРјР°С‚ "HH:MM"
+  workingEndTime     String?   // С„РѕСЂРјР°С‚ "HH:MM"
+
+  tickets      Ticket[]
+  users        User[]
+  serviceTypes RoomServiceType[]
+
+  @@map("rooms")
+}
+
+// РЎРІСЏР·СѓСЋС‰Р°СЏ С‚Р°Р±Р»РёС†Р° Room <-> ServiceType
+model RoomServiceType {
+  roomId        Int
+  serviceTypeId Int
+
+  room        Room        @relation(fields: [roomId], references: [id])
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  @@id([roomId, serviceTypeId])
+  @@map("room_service_types")
+}
+
+model Ticket {
+  id             Int          @id @default(autoincrement())
+  number         String       // РЅР°РїСЂРёРјРµСЂ "A001"
+  priority       Int          @default(1)  // 1-5
+  isCritical     Boolean      @default(false)
+  language       String?      // РЅР°РїСЂРёРјРµСЂ "ru", "kk", "en"
+  status         TicketStatus @default(created)
+  etaMinutes     Int?         // СЂР°СЃС‡С‘С‚РЅРѕРµ РІСЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ
+
+  serviceTypeId Int
+  roomId        Int?
+
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+  room        Room?       @relation(fields: [roomId], references: [id])
+
+  createdAt        DateTime @default(now())
+  businessDate     DateTime @default(dbgenerated("CURRENT_DATE")) @db.Date
+  calledAt         DateTime?
+  serviceStartedAt DateTime?
+  completedAt      DateTime?
+
+  events QueueEvent[]
+
+  @@unique([number, businessDate])
+  @@map("tickets")
+}
+
+model QueueEvent {
+  id        Int          @id @default(autoincrement())
+  ticketId  Int
+  eventType EventType
+  oldStatus TicketStatus?
+  newStatus TicketStatus?
+  payload   Json?
+
+  ticket Ticket   @relation(fields: [ticketId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("queue_events")
+}
+
+model QueueRecommendation {
+  id         Int                    @id @default(autoincrement())
+  type       String
+  message    String
+  severity   RecommendationSeverity @default(warning)
+  isResolved Boolean                @default(false)
+  createdAt  DateTime               @default(now())
+
+  @@map("queue_recommendations")
+}
+
+model BoardScreen {
+  id        Int      @id @default(autoincrement())
+  name      String
+  roomNames String[]
+  createdAt DateTime @default(now())
+
+  @@map("board_screens")
+}
+
+model BoardSettings {
+  id        Int      @id @default(1)
+  settings  Json
+  updatedAt DateTime @updatedAt
+
+  @@map("board_settings")
+}
+
+model Terminal {
+  id             Int      @id @default(autoincrement())
+  name           String
+  location       String
+  active         Boolean  @default(true)
+  roomIds        Int[]    @default([])
+  serviceTypeIds Int[]    @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("terminals")
+}
+
+// РЎСЋРґР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ РЅР°Р·РІР°РЅРёРµ РїСЂРёР»РѕР¶РµРЅРёСЏ Рё РёРєРѕРЅРєР° РѕС‚ Р°РґРјРёРЅР°
+model AppSettings {
+  id        Int      @id @default(1)
+  appName   String   @default("SmartQ")
+  appIcon   String   @default("default_icon.png")
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+// РЎСЋРґР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ РІРёРґРµРѕ Рё С„РѕС‚Рѕ Р РµРєР»Р°РјС‹
+model MediaFile {
+  id        Int      @id @default(autoincrement())
+  type      String   // "video" | "image"
+  filename  String
+  url       String
+  createdAt DateTime @default(now())
+
+  @@map("media_files")
+}

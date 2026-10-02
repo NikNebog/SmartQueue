@@ -1,0 +1,59 @@
+name: smartqmain
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartqmain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartq
+      POSTGRES_USER: smartq
+      POSTGRES_PASSWORD: smartq
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartq-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartq -d smartq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: smartqmain-backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql://smartq:smartq@postgres:5432/smartq?schema=public
+      NODE_ENV: production
+      PORT: 3000
+      CORS_ORIGINS: http://localhost:5173,http://localhost,http://192.168.10.24:5173
+    expose:
+      - "3000"
+    volumes:
+      - smartq-backend-uploads:/app/backend/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_MODE: backend
+        VITE_SMARTQ_API_URL: /api
+    container_name: smartqmain-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - smartq-backend-uploads:/usr/share/nginx/html/uploads:ro
+
+volumes:
+  smartq-postgres-data:
+  smartq-backend-uploads:
